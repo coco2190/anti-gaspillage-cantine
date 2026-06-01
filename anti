@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suivi des Déchets - Cantine du Vaucluse</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2e7d32;
+            text-align: center;
+        }
+        h2 {
+            color: #388e3c;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            background-color: #2e7d32;
+            color: white;
+            border: none;
+            padding: 12px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #1b5e20;
+        }
+        .results {
+            background-color: #e8f5e9;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none; /* Caché au début */
+        }
+        .chart-container {
+            position: relative;
+            margin: auto;
+            height: 300px;
+            width: 300px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Calculateur de Déchets Alimentaires 🍏</h1>
+    <p style="text-align: center; color: #666;">Projet ODD - Collège du Vaucluse (700 demi-pensionnaires)</p>
+    
+    <h2>1. Saisie des données du jour (en kg)</h2>
+    
+    <div class="form-group">
+        <label for="dechetsAlimentaires">Déchets alimentaires globaux (restes d'assiettes, etc.) :</label>
+        <input type="number" id="dechetsAlimentaires" step="0.1" min="0" placeholder="Ex: 25.5">
+    </div>
+    
+    <div class="form-group">
+        <label for="serviettes">Serviettes en papier :</label>
+        <input type="number" id="serviettes" step="0.1" min="0" placeholder="Ex: 2.1">
+    </div>
+    
+    <div class="form-group">
+        <label for="pain">Pain gaspillé :</label>
+        <input type="number" id="pain" step="0.1" min="0" placeholder="Ex: 5.4">
+    </div>
+    
+    <div class="form-group">
+        <label for="emballages">Emballages (yaourts, plastiques...) :</label>
+        <input type="number" id="emballages" step="0.1" min="0" placeholder="Ex: 4.0">
+    </div>
+    
+    <div class="form-group">
+        <label for="fruits">Fruits entamés / non consommés :</label>
+        <input type="number" id="fruits" step="0.1" min="0" placeholder="Ex: 3.2">
+    </div>
+    
+    <button onclick="calculerDechets()">Calculer et générer le camembert</button>
+    
+    <div id="zoneResultats" class="results">
+        <h2>2. Bilans et Statistiques</h2>
+        <p><strong>Poids Total des Déchets :</strong> <span id="poidsTotal">0</span> kg</p>
+        <p><strong>Moyenne par Élève :</strong> <span id="moyenneEleve">0</span> grammes / élève</p>
+        
+        <h3>Répartition des déchets (en % du total) :</h3>
+        <ul id="listePourcentages">
+            </ul>
+        
+        <div class="chart-container">
+            <canvas id="monCamembert"></canvas>
+        </div>
+    </div>
+</div>
+
+<script>
+// Variable globale pour stocker le graphique et pouvoir le mettre à jour
+let monGraphique = null;
+
+function calculerDechets() {
+    const NBRE_ELEVES = 700;
+    
+    // Récupération des valeurs saisies (et conversion en nombre, ou 0 si vide)
+    const dechetsAlim = parseFloat(document.getElementById('dechetsAlimentaires').value) || 0;
+    const serviettes = parseFloat(document.getElementById('serviettes').value) || 0;
+    const pain = parseFloat(document.getElementById('pain').value) || 0;
+    const emballages = parseFloat(document.getElementById('emballages').value) || 0;
+    const fruits = parseFloat(document.getElementById('fruits').value) || 0;
+    
+    // 1. Calcul du Total
+    const total = dechetsAlim + serviettes + pain + emballages + fruits;
+    
+    if (total === 0) {
+        alert("Veuillez saisir au moins une valeur supérieure à 0.");
+        return;
+    }
+    
+    // 2. Calcul de la moyenne par élève (en grammes pour que ce soit plus parlant)
+    // (Total en kg * 1000) / 700 élèves
+    const moyenneG = ((total * 1000) / NBRE_ELEVES).toFixed(1); 
+    
+    // 3. Calcul des pourcentages
+    const pAlim = ((dechetsAlim / total) * 100).toFixed(1);
+    const pServiettes = ((serviettes / total) * 100).toFixed(1);
+    const pPain = ((pain / total) * 100).toFixed(1);
+    const pEmballages = ((emballages / total) * 100).toFixed(1);
+    const pFruits = ((fruits / total) * 100).toFixed(1);
+    
+    // Affichage des textes dans la page
+    document.getElementById('poidsTotal').innerText = total.toFixed(1);
+    document.getElementById('moyenneEleve').innerText = moyenneG;
+    
+    const listeHTML = `
+        <li>Déchets alimentaires : <b>${pAlim}%</b> (${dechetsAlim} kg)</li>
+        <li>Serviettes papier : <b>${pServiettes}%</b> (${serviettes} kg)</li>
+        <li>Pain : <b>${pPain}%</b> (${pain} kg)</li>
+        <li>Emballages : <b>${pEmballages}%</b> (${emballages} kg)</li>
+        <li>Fruits entamés : <b>${pFruits}%</b> (${fruits} kg)</li>
+    `;
+    document.getElementById('listePourcentages').innerHTML = listeHTML;
+    
+    // Afficher la zone de résultats
+    document.getElementById('zoneResultats').style.display = 'block';
+    
+    // 4. Génération ou mise à jour du graphique en camembert
+    const ctx = document.getElementById('monCamembert').getContext('2d');
+    
+    // Si un graphique existait déjà d'un calcul précédent, on le détruit pour le recréer propre
+    if (monGraphique !== null) {
+        monGraphique.destroy();
+    }
+    
+    monGraphique = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: ['Déchets Alim.', 'Serviettes', 'Pain', 'Emballages', 'Fruits entamés'],
+            datasets: [{
+                data: [dechetsAlim, serviettes, pain, emballages, fruits],
+                backgroundColor: [
+                    '#ff9800', // Orange
+                    '#9e9e9e', // Gris
+                    '#8d6e63', // Marron
+                    '#2196f3', // Bleu
+                    '#4caf50'  // Vert
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+}
+</script>
+
+</body>
+</html>
